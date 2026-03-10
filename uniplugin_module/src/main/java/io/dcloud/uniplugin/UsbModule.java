@@ -18,6 +18,7 @@ import java.util.List;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 import io.dcloud.feature.uniapp.common.UniModule;
+import uni.dcloud.io.uniplugin_module.R;
 
 public class UsbModule extends UniModule implements SerialInputOutputManager.Listener {
 
@@ -33,11 +34,13 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             return "1";
         }
 
+        Log.i("不是吧大哥", "R.xml.device_filter " + R.xml.device_filter);
+
         UsbSerialDriver driver = availableDrivers.get(0);
         UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
 
         if (connection == null) {
-            Toast.makeText(mUniSDKInstance.getContext(), "连接不上", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mUniSDKInstance.getContext(), "没有找到连接", Toast.LENGTH_SHORT).show();
             return "2";
         }
 
