@@ -16,7 +16,7 @@ import java.util.List;
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 import io.dcloud.feature.uniapp.common.UniModule;
 
-public class TestModule extends UniModule implements SerialInputOutputManager.Listener {
+public class UsbModule extends UniModule implements SerialInputOutputManager.Listener {
 
     SerialInputOutputManager usbIoManager;
 
