@@ -1,60 +1,68 @@
 package io.dcloud.uniplugin;
 
-import android.app.Activity;
-import android.content.Intent;
-import android.util.Log;
+import android.content.Context;
+import android.hardware.usb.UsbDeviceConnection;
+import android.hardware.usb.UsbManager;
 import android.widget.Toast;
 
-import com.alibaba.fastjson.JSONObject;
+import com.hoho.android.usbserial.driver.UsbSerialDriver;
+import com.hoho.android.usbserial.driver.UsbSerialPort;
+import com.hoho.android.usbserial.driver.UsbSerialProber;
+import com.hoho.android.usbserial.util.SerialInputOutputManager;
+
+import java.io.IOException;
+import java.util.List;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
-import io.dcloud.feature.uniapp.bridge.UniJSCallback;
 import io.dcloud.feature.uniapp.common.UniModule;
 
-public class TestModule extends UniModule {
+public class TestModule extends UniModule implements SerialInputOutputManager.Listener {
 
-    String TAG = "TestModule";
-    public static int REQUEST_CODE = 1000;
+    SerialInputOutputManager usbIoManager;
 
     @UniJSMethod(uiThread = true)
-    public void toast(JSONObject options, UniJSCallback callback) {
-        Toast.makeText(mWXSDKInstance.getUIContext(), "哈哈", Toast.LENGTH_SHORT).show();
-    }
+    public String connect() {
+        UsbManager manager = (UsbManager) mWXSDKInstance.getContext().getSystemService(Context.USB_SERVICE);
+        List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
 
-    //run ui thread
-    @UniJSMethod(uiThread = true)
-    public void testAsyncFunc(JSONObject options, UniJSCallback callback) {
-        Log.e(TAG, "testAsyncFunc--" + options);
-        if (callback != null) {
-            JSONObject data = new JSONObject();
-            data.put("code", "success");
-            callback.invoke(data);
-            //callback.invokeAndKeepAlive(data);
+        if (availableDrivers.isEmpty()) {
+            Toast.makeText(mWXSDKInstance.getUIContext(), "找不到设备", Toast.LENGTH_SHORT).show();
+            return "1";
         }
-    }
 
-    //run JS thread
-    @UniJSMethod(uiThread = false)
-    public JSONObject testSyncFunc() {
-        JSONObject data = new JSONObject();
-        data.put("code", "success");
-        return data;
+        UsbSerialDriver driver = availableDrivers.get(0);
+        UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
+
+        if (connection == null) {
+            Toast.makeText(mWXSDKInstance.getUIContext(), "连接不上", Toast.LENGTH_SHORT).show();
+            return "2";
+        }
+
+        try {
+            // Most devices have just one port (port 0)
+            UsbSerialPort port = driver.getPorts().get(0);
+            port.open(connection);
+            port.setParameters(19200, 8, UsbSerialPort.STOPBITS_1, UsbSerialPort.PARITY_NONE);
+
+            usbIoManager = new SerialInputOutputManager(port, this);
+            usbIoManager.start();
+
+            Toast.makeText(mWXSDKInstance.getUIContext(), "连接成功", Toast.LENGTH_SHORT).show();
+
+            return driver.getDevice().getDeviceName();
+        } catch (IOException e) {
+            Toast.makeText(mWXSDKInstance.getUIContext(), "连接异常", Toast.LENGTH_SHORT).show();
+            throw new RuntimeException(e);
+        }
     }
 
     @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (requestCode == REQUEST_CODE && data.hasExtra("respond")) {
-            Log.e("TestModule", "原生页面返回----" + data.getStringExtra("respond"));
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
-        }
+    public void onNewData(byte[] bytes) {
+
     }
 
-    @UniJSMethod(uiThread = true)
-    public void gotoNativePage() {
-        if (mUniSDKInstance != null && mUniSDKInstance.getContext() instanceof Activity) {
-            Intent intent = new Intent(mUniSDKInstance.getContext(), NativePageActivity.class);
-            ((Activity) mUniSDKInstance.getContext()).startActivityForResult(intent, REQUEST_CODE);
-        }
+    @Override
+    public void onRunError(Exception e) {
+
     }
 }

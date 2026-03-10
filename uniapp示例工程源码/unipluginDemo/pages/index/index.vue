@@ -18,6 +18,8 @@
 	</view>
 </template>
 <script>
+	const module = uni.requireNativePlugin("HuaweiScanModule-HuaweiScanModule")
+	
 	export default {
 		data() {
 			return {

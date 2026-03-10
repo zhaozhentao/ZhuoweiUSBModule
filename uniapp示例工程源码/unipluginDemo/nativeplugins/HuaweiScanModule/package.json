@@ -1,0 +1,17 @@
+{
+  "name": "HuaweiScanModule",
+  "id": "HuaweiScanModule",
+  "version": "1.0.0",
+  "description": "哦哦哦",
+  "_dp_type": "nativeplugin",
+  "_dp_nativeplugin": {
+    "android": {
+      "plugins": [{
+        "type": "module",
+        "name": "HuaweiScanModule-HuaweiScanModule",
+        "class": "io.dcloud.uniplugin.TestModule"
+      }],
+      "integrateType": "aar"
+    }
+  }
+}
