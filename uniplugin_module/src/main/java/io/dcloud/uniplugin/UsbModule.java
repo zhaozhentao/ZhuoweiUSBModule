@@ -45,13 +45,13 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             PendingIntent permissionIntent = PendingIntent.getBroadcast(context, 0, new Intent("USB_PERMISSION"), PendingIntent.FLAG_IMMUTABLE);
             manager.requestPermission(usbDevice, permissionIntent);
             Toast.makeText(context, "没有权限", Toast.LENGTH_SHORT).show();
-            return "error";
+            return "2";
         }
 
         UsbDeviceConnection connection = manager.openDevice(usbDevice);
         if (connection == null) {
             Toast.makeText(context, "连接" + usbDevice.getDeviceName() + "失败", Toast.LENGTH_SHORT).show();
-            return "2";
+            return "3";
         }
 
         try {
@@ -76,20 +76,17 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
     public void send(String base64Str) {
         if (usbIoManager == null) {
             Toast.makeText(mUniSDKInstance.getContext(), "未连接", Toast.LENGTH_SHORT).show();
-
             return;
         }
 
         byte[] byteArray = Base64.decode(base64Str, Base64.DEFAULT);
-
-        Log.i("UsbModule", "接收到 " + Arrays.toString(byteArray));
 
         usbIoManager.writeAsync(byteArray);
     }
 
     @Override
     public void onNewData(byte[] bytes) {
-
+        mUniSDKInstance.runOnUiThread(() -> Toast.makeText(mUniSDKInstance.getContext(), "收到响应" + new String(bytes), Toast.LENGTH_SHORT).show());
     }
 
     @Override
