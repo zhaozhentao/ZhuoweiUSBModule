@@ -29,18 +29,26 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
         UsbManager manager = (UsbManager) mUniSDKInstance.getContext().getSystemService(Context.USB_SERVICE);
         List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
 
+        String s = mUniSDKInstance.getContext().getString(R.string.app_name);
+
         if (availableDrivers.isEmpty()) {
-            Toast.makeText(mUniSDKInstance.getContext(), "找不到设备", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mUniSDKInstance.getContext(), s + "找不到设备", Toast.LENGTH_SHORT).show();
             return "1";
         }
 
         Log.i("不是吧大哥", "R.xml.device_filter " + R.xml.device_filter);
 
+        String a = "";
+        for (UsbSerialDriver usbSerialDriver : availableDrivers) {
+            a += usbSerialDriver.getDevice().getDeviceName() + ", ";
+            Toast.makeText(mUniSDKInstance.getContext(), "devices:" + a, Toast.LENGTH_SHORT).show();
+        }
+
         UsbSerialDriver driver = availableDrivers.get(0);
         UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
 
         if (connection == null) {
-            Toast.makeText(mUniSDKInstance.getContext(), "没有找到连接", Toast.LENGTH_SHORT).show();
+            Toast.makeText(mUniSDKInstance.getContext(), s + "连接失败", Toast.LENGTH_SHORT).show();
             return "2";
         }
 

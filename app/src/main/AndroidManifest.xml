@@ -52,6 +52,14 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED" />
+            </intent-filter>
+
+            <meta-data
+              android:name="android.hardware.usb.action.USB_DEVICE_ATTACHED"
+              android:resource="@xml/device_filter" />
         </activity>
         <meta-data android:name="dcloud_uninview_background"
             android:value="true"/>
@@ -84,7 +92,7 @@
         </activity>
         <meta-data
             android:name="dcloud_appkey"
-            android:value="f0de3e387512b41cee6a2bd025824816" />
+            android:value="d525daa445103658ec8c3c9b9373646a" />
     </application>
 
 </manifest>
