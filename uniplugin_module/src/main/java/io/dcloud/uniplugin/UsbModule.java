@@ -1,6 +1,9 @@
 package io.dcloud.uniplugin;
 
+import android.app.PendingIntent;
 import android.content.Context;
+import android.content.Intent;
+import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.util.Base64;
@@ -18,7 +21,6 @@ import java.util.List;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 import io.dcloud.feature.uniapp.common.UniModule;
-import uni.dcloud.io.uniplugin_module.R;
 
 public class UsbModule extends UniModule implements SerialInputOutputManager.Listener {
 
@@ -26,29 +28,29 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
 
     @UniJSMethod
     public String connect() {
-        UsbManager manager = (UsbManager) mUniSDKInstance.getContext().getSystemService(Context.USB_SERVICE);
+        Context context = mWXSDKInstance.getContext();
+
+        UsbManager manager = (UsbManager) context.getSystemService(Context.USB_SERVICE);
         List<UsbSerialDriver> availableDrivers = UsbSerialProber.getDefaultProber().findAllDrivers(manager);
 
-        String s = mUniSDKInstance.getContext().getString(R.string.app_name);
-
         if (availableDrivers.isEmpty()) {
-            Toast.makeText(mUniSDKInstance.getContext(), s + "找不到设备", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "找不到设备", Toast.LENGTH_SHORT).show();
             return "1";
         }
 
-        Log.i("不是吧大哥", "R.xml.device_filter " + R.xml.device_filter);
+        UsbSerialDriver driver = availableDrivers.get(0);
+        UsbDevice usbDevice = driver.getDevice();
 
-        String a = "";
-        for (UsbSerialDriver usbSerialDriver : availableDrivers) {
-            a += usbSerialDriver.getDevice().getDeviceName() + ", ";
-            Toast.makeText(mUniSDKInstance.getContext(), "devices:" + a, Toast.LENGTH_SHORT).show();
+        if (!manager.hasPermission(driver.getDevice())) {
+            PendingIntent permissionIntent = PendingIntent.getBroadcast(context, 0, new Intent("USB_PERMISSION"), PendingIntent.FLAG_IMMUTABLE);
+            manager.requestPermission(usbDevice, permissionIntent);
+            Toast.makeText(context, "没有权限", Toast.LENGTH_SHORT).show();
+            return "error";
         }
 
-        UsbSerialDriver driver = availableDrivers.get(0);
-        UsbDeviceConnection connection = manager.openDevice(driver.getDevice());
-
+        UsbDeviceConnection connection = manager.openDevice(usbDevice);
         if (connection == null) {
-            Toast.makeText(mUniSDKInstance.getContext(), s + "连接失败", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "连接" + usbDevice.getDeviceName() + "失败", Toast.LENGTH_SHORT).show();
             return "2";
         }
 
@@ -61,11 +63,11 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             usbIoManager = new SerialInputOutputManager(port, this);
             usbIoManager.start();
 
-            Toast.makeText(mUniSDKInstance.getContext(), "连接成功", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "连接成功", Toast.LENGTH_SHORT).show();
 
             return driver.getDevice().getDeviceName();
         } catch (IOException e) {
-            Toast.makeText(mUniSDKInstance.getContext(), "连接异常", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "连接异常", Toast.LENGTH_SHORT).show();
             throw new RuntimeException(e);
         }
     }
