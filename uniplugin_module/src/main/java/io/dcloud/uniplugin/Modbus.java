@@ -44,7 +44,7 @@ public class Modbus {
     // 构建一个读寄存器 ModBus 帧
     public static byte[] makeReadRegisterFrame(int slaveId, int startAddress, int count) {
         if (count > 125) {
-            throw new IllegalArgumentException("最多只能读取125个寄存器");
+            throw new IllegalArgumentException("最多只能读取 125 个寄存器");
         }
 
         // 构建请求数据
@@ -56,5 +56,18 @@ public class Modbus {
 
         // 构建并发送请求帧
         return buildRequestFrame(slaveId, 0x03, requestData);
+    }
+
+    // 构建一个写单个寄存器 ModBus 帧 (功能码 06)
+    public static byte[] makeWriteSingleRegisterFrame(int slaveId, int address, int value) {
+        // 构建请求数据
+        byte[] requestData = new byte[4];
+        requestData[0] = (byte) ((address >> 8) & 0xFF);         // 地址高字节
+        requestData[1] = (byte) (address & 0xFF);                // 地址低字节
+        requestData[2] = (byte) ((value >> 8) & 0xFF);           // 值高字节
+        requestData[3] = (byte) (value & 0xFF);                  // 值低字节
+
+        // 构建并发送请求帧
+        return buildRequestFrame(slaveId, 0x06, requestData);
     }
 }
