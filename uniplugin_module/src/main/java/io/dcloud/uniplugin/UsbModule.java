@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
-import android.util.Base64;
 import android.widget.Toast;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
@@ -72,15 +71,13 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
     }
 
     @UniJSMethod
-    public void send(String base64Str) {
-        if (usbIoManager == null) {
-            Toast.makeText(mUniSDKInstance.getContext(), "未连接", Toast.LENGTH_SHORT).show();
-            return;
-        }
+    public void readRegister(int address) {
+        // 从站地址
+        int slaveId = 8;
 
-        byte[] byteArray = Base64.decode(base64Str, Base64.DEFAULT);
+        byte[] bytes = Modbus.makeReadRegisterFrame(slaveId, address, 1);
 
-        usbIoManager.writeAsync(byteArray);
+        usbIoManager.writeAsync(bytes);
     }
 
     @Override
