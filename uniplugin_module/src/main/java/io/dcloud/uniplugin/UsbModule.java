@@ -7,7 +7,6 @@ import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
 import android.util.Base64;
-import android.util.Log;
 import android.widget.Toast;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
@@ -16,7 +15,7 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.HashMap;
 import java.util.List;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
@@ -86,7 +85,11 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
 
     @Override
     public void onNewData(byte[] bytes) {
-        mUniSDKInstance.runOnUiThread(() -> Toast.makeText(mUniSDKInstance.getContext(), "收到响应" + new String(bytes), Toast.LENGTH_SHORT).show());
+        HashMap<String, Object> map = new HashMap<String, Object>(1) {{
+            put("data", new String(bytes));
+        }};
+
+        mUniSDKInstance.fireGlobalEventCallback("usb_data", map);
     }
 
     @Override
