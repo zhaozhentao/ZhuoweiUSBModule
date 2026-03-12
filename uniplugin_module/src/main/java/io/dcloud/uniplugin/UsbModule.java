@@ -82,8 +82,18 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
 
     @Override
     public void onNewData(byte[] bytes) {
+        // 将 byte 数组转换为十六进制字符串
+        StringBuilder hexString = new StringBuilder();
+        for (byte b : bytes) {
+            String hex = Integer.toHexString(b & 0xFF);
+            if (hex.length() == 1) {
+                hexString.append('0');
+            }
+            hexString.append(hex);
+        }
+
         HashMap<String, Object> map = new HashMap<String, Object>(1) {{
-            put("data", new String(bytes));
+            put("data", hexString.toString());
         }};
 
         mUniSDKInstance.fireGlobalEventCallback("usb_data", map);
