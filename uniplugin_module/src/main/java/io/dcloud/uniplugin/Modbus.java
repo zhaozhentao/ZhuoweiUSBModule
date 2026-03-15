@@ -59,15 +59,39 @@ public class Modbus {
     }
 
     // 构建一个写单个寄存器 ModBus 帧 (功能码 06)
-    public static byte[] makeWriteSingleRegisterFrame(int slaveId, int address, int value) {
-        // 构建请求数据
-        byte[] requestData = new byte[4];
-        requestData[0] = (byte) ((address >> 8) & 0xFF);         // 地址高字节
-        requestData[1] = (byte) (address & 0xFF);                // 地址低字节
-        requestData[2] = (byte) ((value >> 8) & 0xFF);           // 值高字节
-        requestData[3] = (byte) (value & 0xFF);                  // 值低字节
+    // bytesLength: 2 表示传输 2 字节 (1 个寄存器), 4 表示传输 4 字节 (2 个寄存器)
+    public static byte[] makeWriteSingleRegisterFrame(int slaveId, int address, int value, int bytesLength) {
+        if (bytesLength != 2 && bytesLength != 4) {
+            throw new IllegalArgumentException("bytesLength 只能是 2 或 4");
+        }
 
-        // 构建并发送请求帧
-        return buildRequestFrame(slaveId, 0x06, requestData);
+        if (bytesLength == 2) {
+            // 2 字节模式：写入 1 个寄存器
+            byte[] requestData = new byte[4];
+            requestData[0] = (byte) ((address >> 8) & 0xFF);         // 地址高字节
+            requestData[1] = (byte) (address & 0xFF);                // 地址低字节
+            requestData[2] = (byte) ((value >> 8) & 0xFF);           // 值高字节
+            requestData[3] = (byte) (value & 0xFF);                  // 值低字节
+
+            return buildRequestFrame(slaveId, 0x06, requestData);
+        } else {
+            // 4 字节模式：写入 2 个连续寄存器 (使用功能码 16 - 写多个寄存器)
+            byte[] requestData = new byte[5];
+            requestData[0] = (byte) ((address >> 8) & 0xFF);         // 起始地址高字节
+            requestData[1] = (byte) (address & 0xFF);                // 起始地址低字节
+            requestData[2] = (byte) 0x00;                            // 寄存器数量高字节 (2 个)
+            requestData[3] = (byte) 0x02;                            // 寄存器数量低字节 (2 个)
+            requestData[4] = (byte) 0x04;                            // 字节计数 (4 字节)
+
+            // 构建 4 字节数据：高 16 位在前，低 16 位在后
+            byte[] data = new byte[9];
+            System.arraycopy(requestData, 0, data, 0, 5);
+            data[5] = (byte) ((value >> 24) & 0xFF);                 // 值最高字节
+            data[6] = (byte) ((value >> 16) & 0xFF);                 // 值次高字节
+            data[7] = (byte) ((value >> 8) & 0xFF);                  // 值次低字节
+            data[8] = (byte) (value & 0xFF);                         // 值最低字节
+
+            return buildRequestFrame(slaveId, 0x10, data);
+        }
     }
 }

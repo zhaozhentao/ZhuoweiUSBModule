@@ -81,11 +81,11 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
     }
 
     @UniJSMethod
-    public void write(int address, int value) {
+    public void write(int address, int value, int bytesLength) {
         // 从站地址
         int slaveId = 8;
 
-        byte[] bytes = Modbus.makeWriteSingleRegisterFrame(slaveId, address, value);
+        byte[] bytes = Modbus.makeWriteSingleRegisterFrame(slaveId, address, value, bytesLength);
 
         usbIoManager.writeAsync(bytes);
     }
