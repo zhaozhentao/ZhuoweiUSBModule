@@ -98,7 +98,6 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
         if (!manager.hasPermission(driver.getDevice())) {
             PendingIntent permissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), PendingIntent.FLAG_MUTABLE);
             manager.requestPermission(usbDevice, permissionIntent);
-            Toast.makeText(context, "没有权限", Toast.LENGTH_SHORT).show();
             return "2";
         }
 
