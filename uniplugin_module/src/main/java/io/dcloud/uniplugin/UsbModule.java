@@ -1,11 +1,15 @@
 package io.dcloud.uniplugin;
 
 import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.hardware.usb.UsbDevice;
 import android.hardware.usb.UsbDeviceConnection;
 import android.hardware.usb.UsbManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.widget.Toast;
 
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
@@ -22,7 +26,50 @@ import io.dcloud.feature.uniapp.common.UniModule;
 
 public class UsbModule extends UniModule implements SerialInputOutputManager.Listener {
 
+    final String ACTION_USB_PERMISSION = "USB_PERMISSION";
+
     SerialInputOutputManager usbIoManager;
+
+    boolean once = false;
+
+    BroadcastReceiver usbReceiver = new BroadcastReceiver() {
+        public void onReceive(Context context, Intent intent) {
+            String action = intent.getAction();
+
+            switch (action) {
+                case ACTION_USB_PERMISSION: {
+                    boolean granted = intent.getBooleanExtra(UsbManager.EXTRA_PERMISSION_GRANTED, false);
+
+                    if (granted) {
+                        connect();
+                    } else {
+                        new Handler(Looper.getMainLooper()).post(() -> {
+                            Toast.makeText(context.getApplicationContext(), "拒绝授权", Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                    break;
+                }
+                case UsbManager.ACTION_USB_DEVICE_ATTACHED: {
+                    UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        Toast.makeText(context.getApplicationContext(),
+                            "Device attached: " + device,
+                            Toast.LENGTH_SHORT).show();
+                    });
+                    break;
+                }
+                case UsbManager.ACTION_USB_DEVICE_DETACHED: {
+                    UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        Toast.makeText(context.getApplicationContext(),
+                            "Device detached: " + device,
+                            Toast.LENGTH_SHORT).show();
+                    });
+                    break;
+                }
+            }
+        }
+    };
 
     @UniJSMethod
     public String connect() {
@@ -39,8 +86,17 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
         UsbSerialDriver driver = availableDrivers.get(0);
         UsbDevice usbDevice = driver.getDevice();
 
+        if (!once) {
+            once = true;
+            IntentFilter filter = new IntentFilter();
+            filter.addAction(ACTION_USB_PERMISSION);
+            filter.addAction(UsbManager.ACTION_USB_DEVICE_ATTACHED);
+            filter.addAction(UsbManager.ACTION_USB_DEVICE_DETACHED);
+            context.registerReceiver(usbReceiver, filter);
+        }
+
         if (!manager.hasPermission(driver.getDevice())) {
-            PendingIntent permissionIntent = PendingIntent.getBroadcast(context, 0, new Intent("USB_PERMISSION"), PendingIntent.FLAG_IMMUTABLE);
+            PendingIntent permissionIntent = PendingIntent.getBroadcast(context, 0, new Intent(ACTION_USB_PERMISSION), PendingIntent.FLAG_MUTABLE);
             manager.requestPermission(usbDevice, permissionIntent);
             Toast.makeText(context, "没有权限", Toast.LENGTH_SHORT).show();
             return "2";
