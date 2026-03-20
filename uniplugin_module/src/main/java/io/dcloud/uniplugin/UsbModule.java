@@ -30,7 +30,7 @@ import io.dcloud.feature.uniapp.common.UniModule;
 
 public class UsbModule extends UniModule implements SerialInputOutputManager.Listener {
 
-    BlockingDeque<String> queue = new LinkedBlockingDeque<String>();
+    final BlockingDeque<String> queue = new LinkedBlockingDeque<>();
 
     final String ACTION_USB_PERMISSION = "USB_PERMISSION";
 
@@ -163,7 +163,7 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
         try {
             String data = queue.poll(100, TimeUnit.MILLISECONDS);
 
-            callback.invoke(Map.of("data", data));
+            callback.invoke(Map.of("data", data, "status", "ok"));
         } catch (InterruptedException e) {
             mUniSDKInstance.runOnUiThread(() -> Toast.makeText(mUniSDKInstance.getContext(), "写入超时", Toast.LENGTH_SHORT).show());
 
