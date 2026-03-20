@@ -19,10 +19,7 @@ import com.hoho.android.usbserial.util.SerialInputOutputManager;
 
 import java.io.IOException;
 import java.util.HashMap;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.CountDownLatch;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 import io.dcloud.feature.uniapp.common.UniModule;
@@ -34,31 +31,6 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
     SerialInputOutputManager usbIoManager;
 
     boolean once = false;
-
-    // 请求队列
-    private final Queue<Request> requestQueue = new LinkedList<>();
-
-    // 请求类，用于存储请求信息和回调
-    private static class Request {
-        byte[] requestBytes;
-        CountDownLatch latch;
-        byte[] responseData;
-
-        public Request(byte[] requestBytes) {
-            this.requestBytes = requestBytes;
-            this.latch = new CountDownLatch(1);
-        }
-
-        public void setResponse(byte[] data) {
-            this.responseData = data;
-            this.latch.countDown();
-        }
-
-        public byte[] awaitResponse() throws InterruptedException {
-            latch.await();
-            return responseData;
-        }
-    }
 
     BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -154,72 +126,27 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
     }
 
     @UniJSMethod
-    public String read(int address, int count) {
+    public void read(int address, int count) {
         // 从站地址
         int slaveId = 8;
 
         byte[] bytes = Modbus.makeReadRegisterFrame(slaveId, address, count);
 
-        Request request = new Request(bytes);
-        requestQueue.offer(request);
         usbIoManager.writeAsync(bytes);
-
-        try {
-            byte[] response = request.awaitResponse();
-            // 将响应数据转换为十六进制字符串返回
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : response) {
-                String hex = Integer.toHexString(b & 0xFF);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return "error:" + e.getMessage();
-        }
     }
 
     @UniJSMethod
-    public String write(int address, int value, int bytesLength) {
+    public void write(int address, int value, int bytesLength) {
         // 从站地址
         int slaveId = 8;
 
         byte[] bytes = Modbus.makeWriteSingleRegisterFrame(slaveId, address, value, bytesLength);
 
-        Request request = new Request(bytes);
-        requestQueue.offer(request);
         usbIoManager.writeAsync(bytes);
-
-        try {
-            byte[] response = request.awaitResponse();
-            // 将响应数据转换为十六进制字符串返回
-            StringBuilder hexString = new StringBuilder();
-            for (byte b : response) {
-                String hex = Integer.toHexString(b & 0xFF);
-                if (hex.length() == 1) {
-                    hexString.append('0');
-                }
-                hexString.append(hex);
-            }
-            return hexString.toString();
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            return "error:" + e.getMessage();
-        }
     }
 
     @Override
     public void onNewData(byte[] bytes) {
-        // 从队列中取出请求
-        Request request = requestQueue.poll();
-        if (request != null) {
-            // 设置响应数据
-            request.setResponse(bytes);
-        }
-
         // 将 byte 数组转换为十六进制字符串
         StringBuilder hexString = new StringBuilder();
         for (byte b : bytes) {
