@@ -18,13 +18,19 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 
 import java.io.IOException;
-import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.BlockingDeque;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
+import io.dcloud.feature.uniapp.bridge.UniJSCallback;
 import io.dcloud.feature.uniapp.common.UniModule;
 
 public class UsbModule extends UniModule implements SerialInputOutputManager.Listener {
+
+    BlockingDeque<String> queue = new LinkedBlockingDeque<String>();
 
     final String ACTION_USB_PERMISSION = "USB_PERMISSION";
 
@@ -126,23 +132,43 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
     }
 
     @UniJSMethod
-    public void read(int address, int count) {
+    public void read(int address, int count, UniJSCallback callback) {
         // 从站地址
         int slaveId = 8;
 
         byte[] bytes = Modbus.makeReadRegisterFrame(slaveId, address, count);
 
         usbIoManager.writeAsync(bytes);
+
+        try {
+            String data = queue.poll(100, TimeUnit.MICROSECONDS);
+
+            callback.invoke(Map.of("data", data, "status", "ok"));
+        } catch (InterruptedException e) {
+            mUniSDKInstance.runOnUiThread(() -> Toast.makeText(mUniSDKInstance.getContext(), "读取超时", Toast.LENGTH_SHORT).show());
+
+            callback.invoke(Map.of("data", "", "status", "timeout"));
+        }
     }
 
     @UniJSMethod
-    public void write(int address, int value, int bytesLength) {
+    public void write(int address, int value, int bytesLength, UniJSCallback callback) {
         // 从站地址
         int slaveId = 8;
 
         byte[] bytes = Modbus.makeWriteSingleRegisterFrame(slaveId, address, value, bytesLength);
 
         usbIoManager.writeAsync(bytes);
+
+        try {
+            String data = queue.poll(100, TimeUnit.MILLISECONDS);
+
+            callback.invoke(Map.of("data", data));
+        } catch (InterruptedException e) {
+            mUniSDKInstance.runOnUiThread(() -> Toast.makeText(mUniSDKInstance.getContext(), "写入超时", Toast.LENGTH_SHORT).show());
+
+            callback.invoke(Map.of("data", "", "status", "timeout"));
+        }
     }
 
     @Override
@@ -157,11 +183,11 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             hexString.append(hex);
         }
 
-        HashMap<String, Object> map = new HashMap<String, Object>(1) {{
-            put("data", hexString.toString());
-        }};
-
-        mUniSDKInstance.fireGlobalEventCallback("usb_data", map);
+        try {
+            queue.put(hexString.toString());
+        } catch (InterruptedException e) {
+            mUniSDKInstance.runOnUiThread(() -> Toast.makeText(mUniSDKInstance.getContext(), "发送数据超时", Toast.LENGTH_SHORT).show());
+        }
     }
 
     @Override
