@@ -49,22 +49,9 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
                     }
                     break;
                 }
+                case UsbManager.ACTION_USB_DEVICE_DETACHED:
                 case UsbManager.ACTION_USB_DEVICE_ATTACHED: {
                     UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        Toast.makeText(context.getApplicationContext(),
-                            "Device attached: " + device,
-                            Toast.LENGTH_SHORT).show();
-                    });
-                    break;
-                }
-                case UsbManager.ACTION_USB_DEVICE_DETACHED: {
-                    UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        Toast.makeText(context.getApplicationContext(),
-                            "Device detached: " + device,
-                            Toast.LENGTH_SHORT).show();
-                    });
                     break;
                 }
             }
