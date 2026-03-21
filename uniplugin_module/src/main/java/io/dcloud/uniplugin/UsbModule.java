@@ -12,7 +12,6 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
-import com.alibaba.fastjson.JSONObject;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
@@ -146,16 +145,6 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
 
     @Override
     public void onNewData(byte[] bytes) {
-        // 将 byte 数组转换为十六进制字符串
-        StringBuilder hexString = new StringBuilder();
-        for (byte b : bytes) {
-            String hex = Integer.toHexString(b & 0xFF);
-            if (hex.length() == 1) {
-                hexString.append('0');
-            }
-            hexString.append(hex);
-        }
-
         // 从队列中取出callback并执行
         UniJSCallback callback = callbackQueue.poll();
 
@@ -163,7 +152,7 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             return;
         }
 
-        mUniSDKInstance.runOnUiThread(() -> callback.invoke(Map.of("status", "ok", "data", hexString.toString())));
+        mUniSDKInstance.runOnUiThread(() -> callback.invoke(Map.of("status", "ok", "data", bytes)));
     }
 
     @Override
