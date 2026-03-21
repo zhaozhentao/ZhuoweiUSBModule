@@ -18,10 +18,8 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 
 import java.io.IOException;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
 import io.dcloud.feature.uniapp.bridge.UniJSCallback;
@@ -29,13 +27,13 @@ import io.dcloud.feature.uniapp.common.UniModule;
 
 public class UsbModule extends UniModule implements SerialInputOutputManager.Listener {
 
-    final Queue<UniJSCallback> callbackQueue = new LinkedList<>();
-
     final String ACTION_USB_PERMISSION = "USB_PERMISSION";
 
     SerialInputOutputManager usbIoManager;
 
     boolean once = false;
+
+    UniJSCallback currentCallback;
 
     BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
@@ -137,22 +135,34 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
         doWrite(bytes, callback);
     }
 
-    private void doWrite(byte[] bytes, UniJSCallback callback) {
-        callbackQueue.offer(callback);
+    private synchronized void doWrite(byte[] bytes, UniJSCallback callback) {
+        if (currentCallback != null) {
+            callback.invoke(Map.of("status", "busy", "message", "上一条指令未响应"));
+            return;
+        }
+
+        currentCallback = callback;
 
         usbIoManager.writeAsync(bytes);
     }
 
     @Override
     public void onNewData(byte[] bytes) {
-        // 从队列中取出callback并执行
-        UniJSCallback callback = callbackQueue.poll();
+        // 转换byte数组为int数组
+        int[] intArray = new int[bytes.length];
 
-        if (callback == null) {
+        for (int i = 0; i < bytes.length; i++) {
+            intArray[i] = bytes[i] & 0xFF;
+        }
+
+        if (currentCallback == null) {
             return;
         }
 
-        mUniSDKInstance.runOnUiThread(() -> callback.invoke(Map.of("status", "ok", "data", bytes)));
+        mUniSDKInstance.runOnUiThread(() -> {
+            currentCallback.invoke(Map.of("status", "ok", "data", intArray));
+            currentCallback = null;
+        });
     }
 
     @Override
