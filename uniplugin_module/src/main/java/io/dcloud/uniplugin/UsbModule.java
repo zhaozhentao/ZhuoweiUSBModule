@@ -12,19 +12,25 @@ import android.os.Handler;
 import android.os.Looper;
 import android.widget.Toast;
 
+import com.alibaba.fastjson.JSONObject;
 import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 
 import java.io.IOException;
-import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Map;
+import java.util.Queue;
 
 import io.dcloud.feature.uniapp.annotation.UniJSMethod;
+import io.dcloud.feature.uniapp.bridge.UniJSCallback;
 import io.dcloud.feature.uniapp.common.UniModule;
 
 public class UsbModule extends UniModule implements SerialInputOutputManager.Listener {
+
+    final Queue<UniJSCallback> callbackQueue = new LinkedList<>();
 
     final String ACTION_USB_PERMISSION = "USB_PERMISSION";
 
@@ -113,21 +119,27 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
     }
 
     @UniJSMethod
-    public void read(int address, int count) {
+    public void read(int address, int count, UniJSCallback callback) {
         // 从站地址
         int slaveId = 8;
 
         byte[] bytes = Modbus.makeReadRegisterFrame(slaveId, address, count);
 
-        usbIoManager.writeAsync(bytes);
+        doWrite(bytes, callback);
     }
 
     @UniJSMethod
-    public void write(int address, int value, int bytesLength) {
+    public void write(int address, int value, int bytesLength, UniJSCallback callback) {
         // 从站地址
         int slaveId = 8;
 
         byte[] bytes = Modbus.makeWriteSingleRegisterFrame(slaveId, address, value, bytesLength);
+
+        doWrite(bytes, callback);
+    }
+
+    private void doWrite(byte[] bytes, UniJSCallback callback) {
+        callbackQueue.offer(callback);
 
         usbIoManager.writeAsync(bytes);
     }
@@ -144,11 +156,14 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             hexString.append(hex);
         }
 
-        HashMap<String, Object> map = new HashMap<String, Object>(1) {{
-            put("data", hexString.toString());
-        }};
+        // 从队列中取出callback并执行
+        UniJSCallback callback = callbackQueue.poll();
 
-        mUniSDKInstance.fireGlobalEventCallback("usb_data", map);
+        if (callback == null) {
+            return;
+        }
+
+        mUniSDKInstance.runOnUiThread(() -> callback.invoke(Map.of("status", "ok", "data", hexString.toString())));
     }
 
     @Override
