@@ -18,6 +18,7 @@ import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -53,6 +54,10 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
                     break;
                 }
                 case UsbManager.ACTION_USB_DEVICE_DETACHED:
+                    usbIoManager.stop();
+                    HashMap<String, Object> map = new HashMap<>();
+                    map.put("status", "disconnect");
+                    mUniSDKInstance.fireGlobalEventCallback("usb_event", map);
                 case UsbManager.ACTION_USB_DEVICE_ATTACHED: {
                     UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                     break;
@@ -106,7 +111,11 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             usbIoManager = new SerialInputOutputManager(port, this);
             usbIoManager.start();
 
-            Toast.makeText(context, "连接成功", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "连接成功!", Toast.LENGTH_SHORT).show();
+
+            HashMap<String, Object> map = new HashMap<>();
+            map.put("status", "connected");
+            mUniSDKInstance.fireGlobalEventCallback("usb_event", map);
 
             return driver.getDevice().getDeviceName();
         } catch (IOException e) {
