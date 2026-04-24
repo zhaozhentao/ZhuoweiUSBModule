@@ -16,6 +16,7 @@ import com.hoho.android.usbserial.driver.UsbSerialDriver;
 import com.hoho.android.usbserial.driver.UsbSerialPort;
 import com.hoho.android.usbserial.driver.UsbSerialProber;
 import com.hoho.android.usbserial.util.SerialInputOutputManager;
+import com.tencent.bugly.crashreport.CrashReport;
 
 import java.io.IOException;
 import java.util.HashMap;
@@ -65,6 +66,11 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             }
         }
     };
+
+    @UniJSMethod
+    public void init(String appId) {
+        CrashReport.initCrashReport(mWXSDKInstance.getContext(), appId, false);
+    }
 
     @UniJSMethod
     public String connect() {
