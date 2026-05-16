@@ -117,7 +117,7 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             usbIoManager = new SerialInputOutputManager(port, this);
             usbIoManager.start();
 
-            Toast.makeText(context, "连接成功!", Toast.LENGTH_SHORT).show();
+            Toast.makeText(context, "USB连接成功，正在进行认证...", Toast.LENGTH_SHORT).show();
 
             HashMap<String, Object> map = new HashMap<>();
             map.put("status", "connected");
