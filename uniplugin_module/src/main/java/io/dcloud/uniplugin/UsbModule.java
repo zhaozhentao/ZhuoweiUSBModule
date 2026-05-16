@@ -37,6 +37,13 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
 
     UniJSCallback currentCallback;
 
+    // 添加超时相关常量
+    private static final int OPERATION_TIMEOUT_MS = 5000; // 5秒超时
+
+    // 添加超时处理器
+    Handler timeoutHandler = new Handler(Looper.getMainLooper());
+    Runnable timeoutRunnable;
+
     BroadcastReceiver usbReceiver = new BroadcastReceiver() {
         public void onReceive(Context context, Intent intent) {
             String action = intent.getAction();
@@ -54,11 +61,28 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
                     }
                     break;
                 }
-                case UsbManager.ACTION_USB_DEVICE_DETACHED:
-                    usbIoManager.stop();
+                case UsbManager.ACTION_USB_DEVICE_DETACHED: {
+                    // 停止 USB IO 管理器
+                    if (usbIoManager != null) {
+                        usbIoManager.stop();
+                    }
+
+                    // 清除当前回调并触发断开通知
+                    UniJSCallback callback;
+                    synchronized (this) {
+                        callback = currentCallback;
+                        currentCallback = null;
+                    }
+
+                    if (callback != null) {
+                        callback.invoke(Map.of("status", "disconnect", "message", "设备已断开"));
+                    }
+
                     HashMap<String, Object> map = new HashMap<>();
                     map.put("status", "disconnect");
                     mUniSDKInstance.fireGlobalEventCallback("usb_event", map);
+                    break; // 重要：添加这一行
+                }
                 case UsbManager.ACTION_USB_DEVICE_ATTACHED: {
                     UsbDevice device = intent.getParcelableExtra(UsbManager.EXTRA_DEVICE);
                     break;
@@ -158,11 +182,39 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
 
         currentCallback = callback;
 
+        // 设置超时定时器
+        timeoutRunnable = () -> {
+            UniJSCallback tempCallback;
+            synchronized (this) {
+                if (currentCallback == null) {
+                    return;
+                }
+                tempCallback = currentCallback;
+                currentCallback = null;
+            }
+            tempCallback.invoke(Map.of("status", "timeout", "message", "操作超时，请检查设备连接"));
+        };
+        timeoutHandler.postDelayed(timeoutRunnable, OPERATION_TIMEOUT_MS);
+
         usbIoManager.writeAsync(bytes);
     }
 
     @Override
     public void onNewData(byte[] bytes) {
+        // 取消超时定时器
+        if (timeoutRunnable != null) {
+            timeoutHandler.removeCallbacks(timeoutRunnable);
+        }
+
+        UniJSCallback callback;
+        synchronized (this) {
+            if (currentCallback == null) {
+                return;
+            }
+            callback = currentCallback;
+            currentCallback = null;
+        }
+
         // 转换byte数组为int数组
         int[] intArray = new int[bytes.length];
 
@@ -170,18 +222,35 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
             intArray[i] = bytes[i] & 0xFF;
         }
 
-        if (currentCallback == null) {
-            return;
-        }
-
+        final UniJSCallback finalCallback = callback;
         mUniSDKInstance.runOnUiThread(() -> {
-            currentCallback.invoke(Map.of("status", "ok", "data", intArray));
-            currentCallback = null;
+            finalCallback.invoke(Map.of("status", "ok", "data", intArray));
         });
     }
 
     @Override
     public void onRunError(Exception e) {
+        // 处理 USB 通信错误
+        CrashReport.postCatchedException(e);
 
+        // 取消超时定时器
+        if (timeoutRunnable != null) {
+            timeoutHandler.removeCallbacks(timeoutRunnable);
+        }
+
+        UniJSCallback callback;
+        synchronized (this) {
+            if (currentCallback == null) {
+                return;
+            }
+            callback = currentCallback;
+            currentCallback = null;
+        }
+
+        final UniJSCallback finalCallback = callback;
+        final String errorMessage = e.getMessage();
+        mUniSDKInstance.runOnUiThread(() -> {
+            finalCallback.invoke(Map.of("status", "error", "message", "USB通信错误: " + errorMessage));
+        });
     }
 }
