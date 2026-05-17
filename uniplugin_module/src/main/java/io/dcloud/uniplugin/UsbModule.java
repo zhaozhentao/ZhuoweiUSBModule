@@ -38,7 +38,7 @@ public class UsbModule extends UniModule implements SerialInputOutputManager.Lis
     UniJSCallback currentCallback;
 
     // 添加超时相关常量
-    private static final int OPERATION_TIMEOUT_MS = 5000; // 5秒超时
+    private static final int OPERATION_TIMEOUT_MS = 1000; // 1 秒超时
 
     // 添加超时处理器
     Handler timeoutHandler = new Handler(Looper.getMainLooper());
